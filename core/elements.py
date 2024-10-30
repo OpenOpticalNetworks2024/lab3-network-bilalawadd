@@ -108,33 +108,67 @@ class Node(object):
 
 
 class Line(object):
-    def __init__(self):
-        pass
+    def __init__(self,length:float, label:str):
+        self._length = length
+        self._label = label
+        self._successive = {}
+
 
     @property
     def label(self):
-        pass
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        self._label = label
 
     @property
     def length(self):
-        pass
+        return self._length
+
+    @length.setter
+    def length(self, length):
+        self._length = length
 
     @property
     def successive(self):
-        pass
+        return self._successive
+
 
     @successive.setter
-    def successive(self):
-        pass
+    def successive(self,successive):
+        self._successive = successive
+
+
 
     def latency_generation(self):
-        pass
+        speed_of_light = 3 *10**8
+        latency = (3 / 2) * self.length / speed_of_light
+        return latency
 
-    def noise_generation(self):
-        pass
 
-    def propagate(self):
-        pass
+    def noise_generation(self,signal_power):
+       noise_power = 1e-9 * signal_power * self.length
+       return noise_power
+
+
+    def propagate(self,new_signal_info):
+        noise = self.noise_generation(new_signal_info.signal_power)
+        new_signal_info.update_noise_power(noise)
+        latency = self.latency_generation()
+        new_signal_info.update_latency(latency)
+
+        # Check if there is a successive node along the specified path
+
+        if new_signal_info.path:
+            next_node_label = new_signal_info.path[0]
+            if next_node_label in self.successive:
+                next_node = self.successive[next_node_label]
+                next_node.propagate(new_signal_info)
+            else:
+                print(f"Line {self.label} does not have a successive element with label {next_node_label}")
+        else:
+            print(f"Signal reached the end of the path at Line {self.label}
 
 
 class Network(object):
