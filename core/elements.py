@@ -142,10 +142,8 @@ class Line(object):
 
 
     def latency_generation(self):
-        speed_of_light = 3 *10**8
-        latency = (3 / 2) * self.length / speed_of_light
-        return latency
-
+        speed_in_fiber = 2 * 10 ** 8  # Speed of light in fiber (m/s)
+        return self._length / speed_in_fiber
 
     def noise_generation(self,signal_power):
        noise_power = 1e-9 * signal_power * self.length
