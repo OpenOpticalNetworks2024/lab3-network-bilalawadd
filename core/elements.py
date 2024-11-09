@@ -2,11 +2,12 @@ import json
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
+
 class Signal_information(object):
-    def __init__(self, signal_power: float, path: list[str]):
+    def __init__(self, signal_power, path):
         self._signal_power = signal_power
-        self._noise_power = 0.0
-        self._latency = 0.0
+        self._noise_power = 0
+        self._latency = 0
         self._path = path
 
 
@@ -40,8 +41,8 @@ class Signal_information(object):
 
 
     @latency.setter
-    def latency(self,latency: float):
-        self._latency = latency
+    def latency(self,latency1: float):
+        self._latency = latency1
 
 
     def update_latency(self,delta_latency: float):
@@ -65,8 +66,8 @@ class Signal_information(object):
 
 
 class Node(object):
-    def __init__(self, node_info: dict):
-        self._label = node_info.get('label','')
+    def __init__(self, node_info: dict,label:str):
+        self._label = label
         self._position = node_info.get("position", (0, 0))  # tuple
         self._connected_nodes = node_info.get("connected_nodes", [])
         self._successive = {}  # empty dict
@@ -75,36 +76,36 @@ class Node(object):
     def label(self):
         return self._label
     @label.setter
-    def label(self, label):
-        self._label = label
+    def label(self, label1):
+        self._label = label1
 
     @property
     def position(self):
         return self._position
     @position.setter
-    def position(self, position):
-        self._position = position
+    def position(self, position1):
+        self._position = position1
 
     @property
     def connected_nodes(self):
         return self._connected_nodes
     @connected_nodes.setter
-    def connected_nodes(self, connected_nodes):
-        self._connected_nodes = connected_nodes
+    def connected_nodes(self, connected_nodes1):
+        self._connected_nodes = connected_nodes1
 
     @property
     def successive(self):
         return self._successive
 
     @successive.setter
-    def successive(self,successive):
-        self._successive = successive
+    def successive(self,successive1):
+        self._successive = successive1
 
     def propagate(self, sig: Signal_information):
         for node in sig.path:
-            if sig.path:
+            if len(sig.path) > 1:
                 if node == self._label:
-                    sig.update_path(node)  # remove the node crossed by the signal
+                    sig.update_path(node)
                     line = self.successive[node + sig.path[0]]
                     line.propagate(sig)
 
@@ -121,16 +122,16 @@ class Line(object):
         return self._label
 
     @label.setter
-    def label(self, label):
-        self._label = label
+    def label(self, label1):
+        self._label = label1
 
     @property
     def length(self):
         return self._length
 
     @length.setter
-    def length(self, length):
-        self._length = length
+    def length(self, length1):
+        self._length = length1
 
     @property
     def successive(self):
@@ -138,8 +139,8 @@ class Line(object):
 
 
     @successive.setter
-    def successive(self,successive):
-        self._successive = successive
+    def successive(self,successive1):
+        self._successive = successive1
 
 
 
@@ -172,32 +173,28 @@ class Line(object):
 
 
 class Network(object):
-    def __init__(self,filename: str):
+    nodes: dict[str, Node]
+    lines: dict[str, Line]
+    def __init__(self,filename):
         self._nodes={}
         self._lines={}
-        with open(filename, 'r') as fileHandle:
-            node_data = json.load(fileHandle)
+        with open("../resources./nodes.json") as fileHandle:
+            data = json.load(fileHandle)
+            for jsonNode in data.items():
+                node = Node(jsonNode[1], jsonNode[0])
+                self.nodes[jsonNode[0]] = node
 
-            # Create Node instances
-        for node_label, attributes in node_data.items():
-            position = tuple(attributes['position'])
-            connected_nodes = attributes['connected_nodes']
-            # Instantiate Node and add to nodes dictionary
-            self._nodes[node_label] = Node({
-            'label': node_label,
-            'position': position,
-             'connected_nodes': connected_nodes
-             })
-        for node in self.nodes.values():
-            for innerNode in node.connected_nodes:
-                newNode = self.nodes[innerNode]
-                lineLabel = node.label + innerNode
-                line = Line(self.lineLength(node, newNode), lineLabel)
-                self.lines[lineLabel] = line
+            for node in self.nodes.values():
+                for innerNode in node.connected_nodes:
+                    newNode = self.nodes[innerNode]
+                    lineLabel = node.label + innerNode
+                    line = Line(self.lineLength(node, newNode), lineLabel)
+                    self.lines[lineLabel] = line
 
     def lineLength(self, node1, node2):
-        pos1, pos2 = node1.position, node2.position
-        return math.sqrt((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2)
+        x1, y1 = node1._position
+        x2, y2 = node2._position
+        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
     @property
     def nodes(self):
@@ -218,64 +215,90 @@ class Network(object):
             self._lines = new_lines
 
     def draw(self):
-        plt.figure(figsize=(8, 6))
-
-        # Draw nodes
-        for node_label, node in self.nodes.items():
+        # Create a visualization of the network
+        plt.figure(figsize=(8, 8))
+        for node in self.nodes.values():
             x, y = node.position
-            plt.plot(x, y, 'o', markersize=8, color='blue')
-            plt.text(x, y, f'{node_label}', fontsize=12, ha='right', color='darkblue')
+            plt.plot(x, y, 'ro')
+            plt.text(x, y, node._label, fontsize=12, ha='center')
 
-        # Draw lines
-        for line_label, line in self.lines.items():
-            start_node_label, end_node_label = line_label[0], line_label[1]
-            start_pos = self.nodes[start_node_label].position
-            end_pos = self.nodes[end_node_label].position
-            plt.plot([start_pos[0], end_pos[0]], [start_pos[1], end_pos[1]], 'k-', linewidth=1)
-            mid_x = (start_pos[0] + end_pos[0]) / 2
-            mid_y = (start_pos[1] + end_pos[1]) / 2
-            plt.text(mid_x, mid_y, f'{line_label}', fontsize=10, color='green')
+        for line in self.lines.values():
+            node1, node2 = line._label[0], line._label[1]
+            x1, y1 = self.nodes[node1].position
+            x2, y2 = self.nodes[node2].position
+            plt.plot([x1, x2], [y1, y2], 'b-')
 
-        plt.xlabel("X Position")
-        plt.ylabel("Y Position")
-        plt.title("Network Visualization")
-        plt.grid(True)
+        plt.xlabel("X-coordinate")
+        plt.ylabel("Y-coordinate")
+        plt.title("Network Diagram")
+        plt.grid()
         plt.show()
 
     # find_paths: given two node labels, returns all paths that connect the 2 nodes
     # as a list of node labels. Admissible path only if cross any node at most once
-    def find_paths(self, start, end, path=None):
+    def find_paths(self, start: str, end: str, visited=None, path=None):
+        if visited is None:
+            visited = set()
         if path is None:
             path = []
-        path = path + [start]
-        if start == end:
+        node = self.nodes[start]
+        visited.add(node.label)
+        path = path + [node.label]
+
+        if node.label == end:
             return [path]
 
         paths = []
-        for node_label in self.nodes[start].connected_nodes:
-            if node_label not in path:
-                new_paths = self.find_paths(node_label, end, path)
-                for new_path in new_paths:
-                    paths.append(new_path)
+        for line in node.successive.values():
+            # next_node_label = line.successive[node.label].label
+            next_node_label = list(line.successive.values())[-1].label
+            if next_node_label not in visited:
+                new_paths = self.find_paths(next_node_label, end, visited.copy(), path.copy())
+                paths.extend(new_paths)
         return paths
 
     # connect function set the successive attributes of all NEs as dicts
     # each node must have dict of lines and viceversa
     def connect(self):
-        # Assign each line a destination node
-        for line in self.lines.values():
-            start_node, end_node = line.label[0], line.label[1]
-            if start_node in self.nodes and end_node in self.nodes:
-                line.successive[end_node] = self.nodes[end_node]
+        for nodeLabel, node in self.nodes.items():
+            # node.successive = { line.label : line for line in self.lines.values() if nodeLabel in line.label }
+            for line in self.lines.values():  # same as the line above
+                if nodeLabel == line.label[0]:  # to take just the line straight forward following the path
+                    node.successive[line.label] = line
 
-        # Assign each node a dictionary of outgoing lines
-        for node in self.nodes.values():
-            for connected_node_label in node.connected_nodes:
-                line_label = ''.join(sorted([node.label, connected_node_label]))
-                if line_label in self.lines:
-                    node.successive[line_label] = self.lines[line_label]
-
+        for lineLabel, line in self.lines.items():
+            node1Label, node2label = lineLabel[0], lineLabel[1]
+            # line.successive = { nodeLabel : self.nodes[nodeLabel] for nodeLabel in (node1Label, node2label)}
+            for nodeLabel in (node1Label, node2label):  # same as the line above
+                line.successive[nodeLabel] = self.nodes[nodeLabel]
     # propagate signal_information through path specified in it
     # and returns the modified spectral information
-    def propagate(self, sig_info: Signal_information):
-        self.nodes[sig_info.path[0]].propagate(sig_info)
+    def propagate(self, signalInformation: Signal_information):
+        self.nodes[signalInformation.path[0]].propagate(signalInformation)
+
+    def results(self):
+        all_paths_data = []  # Store all data to avoid row-by-row concatenation
+
+        for node1 in self.nodes.keys():
+            for node2 in self.nodes.keys():
+                if node1 != node2:
+                    paths = self.find_paths(node1, node2)
+                    for path in paths:
+                        path_string = '->'.join(path)
+                        sig = Signal_information(0.001, path)
+                        self.propagate(sig)
+
+                        # Calculate SNR in dB
+                        SNR = 10 * math.log10(sig.signal_power / sig.noise_power)
+
+                        # Append path information as a dict
+                        all_paths_data.append({
+                            'Path': path_string,
+                            'Accumulated Latency': sig.latency,
+                            'Accumulated Noise': sig.noise_power,
+                            'SNR (dB)': SNR
+                        })
+
+        # Create DataFrame from the collected data in one operation
+        df = pd.DataFrame(all_paths_data)
+        print(df)
